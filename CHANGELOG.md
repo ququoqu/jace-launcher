@@ -1,7 +1,7 @@
 # Changelog
 
-## 1.4.2
-- **Windows setup no longer closes after you add a Microsoft account.** Closing the sign-in window made Windows think the last window had closed, so setup quit as if cancelled. Setup now only ends through its own buttons.
+## 1.4.3
+- **Windows setup no longer closes when you add a Microsoft account.** When the Microsoft sign-in page started loading, Windows rebuilt the setup window to draw the page, which hid setup and ended it. The sign-in window is now a separate window, so setup stays open.
 - `crash.log` also records how setup ended and why the app quit.
 
 ## 1.4.1

@@ -24,7 +24,13 @@ class MicrosoftLoginDialog(QDialog):
     got_code = Signal(str)
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        # Its own top-level window, NOT a child of the window that opened it: on Windows the
+        # first web view makes Qt re-create the native window it belongs to, which hid the
+        # setup wizard and ended setup ("closes right after signing in"). Still modal.
+        super().__init__(None)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
+        if parent is not None and parent.window() is not None:
+            self.setWindowIcon(parent.window().windowIcon())
         self.setWindowTitle("Sign in with Microsoft")
         self.resize(520, 680)
         self.url, self.redirect = acc_mod.login_url()
