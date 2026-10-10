@@ -594,6 +594,8 @@ def run_windows_update(argv) -> None:
 
 
 def main():
+    from jace import crashlog
+    crashlog.install()
     close_splash()
     if desktop.handle_cli(sys.argv[1:]):
         return

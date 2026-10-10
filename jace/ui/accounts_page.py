@@ -12,7 +12,6 @@ from jace.skin_render import render_head
 from jace.ui.common import fetch_image, run_task, show_error
 
 try:
-    import shiboken6
     from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
     from PySide6.QtWebEngineWidgets import QWebEngineView
     HAVE_WEBENGINE = True
@@ -45,14 +44,17 @@ class MicrosoftLoginDialog(QDialog):
             self._build_fallback(lay)
 
     def done(self, result):
-        # The page must be destroyed before its profile, or Qt warns
-        # "Release of profile requested but WebEnginePage still not deleted".
+        # The page must go before its profile ("Release of profile requested but WebEnginePage
+        # still not deleted"). Deleting them right here crashed on Windows/Wine while the browser
+        # engine was still shutting down, so queue the deletions: Qt runs them in this order once
+        # control is back in the event loop.
         if HAVE_WEBENGINE and getattr(self, "page", None) is not None:
             self.view.urlChanged.disconnect(self._url_changed)
+            self.view.stop()
             self.view.setPage(None)
-            shiboken6.delete(self.page)
-            shiboken6.delete(self.view)
-            shiboken6.delete(self.profile)
+            self.page.deleteLater()
+            self.view.deleteLater()
+            self.profile.deleteLater()
             self.page = None
         super().done(result)
 

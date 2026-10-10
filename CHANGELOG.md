@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+- **Windows:** fixed a crash after signing in with Microsoft, including in the setup wizard. The sign-in window now closes its built-in browser safely.
+- **Crash log:** if something goes wrong, Jace Launcher shows the error and saves the details to `crash.log` in its data folder (`%APPDATA%\.jacelauncher` on Windows), instead of just closing.
+
 ## 1.4.0
 - **Voice channels and group calls** from the Jace Social mod: join a server's voice channel or a group chat's call in game. Everyone in it connects to everyone, like in the Jace Social app. The call bar here shows it too, with Mute, Deafen and Leave.
 - **Camera and screen sharing** in calls and voice channels: **📷 Camera** and **🖥️ Share screen** in the call bar (or in game) send your camera or your main screen. People see them in Jace Social; the launcher stays voice-only for what others send, and **Watch in Jace Social** opens it there.
