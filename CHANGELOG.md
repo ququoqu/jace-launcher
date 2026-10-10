@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.1
+## 1.4.1
 - **Windows:** fixed a crash after signing in with Microsoft, including in the setup wizard. The sign-in window now closes its built-in browser safely.
 - **Crash log:** if something goes wrong, Jace Launcher shows the error and saves the details to `crash.log` in its data folder (`%APPDATA%\.jacelauncher` on Windows), instead of just closing.
 
