@@ -504,12 +504,35 @@ def self_test_login(app) -> int:
 
     def fake_init(dlg, parent=None):
         real_init(dlg, parent)
+        page = dlg.view.page() if hasattr(dlg, "view") else None
+        if page is not None:
+            page.windowCloseRequested.connect(lambda: results.append("page asked to close its window (window.close())"))
         # pretend the user signed in: jump to the redirect Microsoft would send
         QTimer.singleShot(4000, lambda: dlg.view.setUrl(QUrl(dlg.redirect + "?code=self-test")))
     accounts_page.MicrosoftLoginDialog.__init__ = fake_init
 
+    import traceback as _tb
     results = []
-    wiz = SetupWizard()
+
+    class Wizard(SetupWizard):
+        """Logs how the wizard gets closed, to find what ends setup on Windows."""
+        def _log(self, what):
+            results.append(f"wizard {what} on page '{self.currentPage().title() if self.currentPage() else '?'}'\n"
+                           + "".join(_tb.format_stack(limit=8)))
+
+        def done(self, r):
+            self._log(f"done({int(r)})")
+            super().done(r)
+
+        def closeEvent(self, e):
+            self._log("closeEvent")
+            super().closeEvent(e)
+
+        def hideEvent(self, e):
+            self._log("hideEvent")
+            super().hideEvent(e)
+
+    wiz = Wizard()
     state = {"done": False}
 
     def start():
