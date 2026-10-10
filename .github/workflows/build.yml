@@ -74,6 +74,23 @@ jobs:
           if (Test-Path $sm) { throw "Start menu shortcut left behind" }
           if (Test-Path $key) { throw "Installed apps entry left behind" }
           "WINDOWS INSTALLER OK"
+      - name: Test adding a Microsoft account in setup (setup must stay open)
+        shell: pwsh
+        run: |
+          $setup = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
+          $env:JACE_LAUNCHER_HOME = "$env:RUNNER_TEMP\jace-login-test"
+          $env:JACE_SELF_TEST_OUT = "$env:RUNNER_TEMP\login.txt"
+          # 1. without the fix: shows whether Windows really ends setup after sign-in (doesn't fail the build)
+          $env:JACE_TEST_WITHOUT_FIX = "1"
+          Start-Process -FilePath $setup -ArgumentList "--self-test-login" -Wait
+          "--- without the fix:"; Get-Content $env:JACE_SELF_TEST_OUT -ErrorAction SilentlyContinue
+          Remove-Item Env:JACE_TEST_WITHOUT_FIX
+          Remove-Item $env:JACE_SELF_TEST_OUT -ErrorAction SilentlyContinue
+          # 2. with the fix: must pass
+          Start-Process -FilePath $setup -ArgumentList "--self-test-login" -Wait
+          "--- with the fix:"; Get-Content $env:JACE_SELF_TEST_OUT
+          Get-Content "$env:JACE_LAUNCHER_HOME\crash.log" -ErrorAction SilentlyContinue
+          if (-not (Select-String -Path $env:JACE_SELF_TEST_OUT -Pattern "LOGIN-TEST OK" -Quiet)) { throw "setup closed after adding an account" }
       - uses: actions/upload-artifact@v7
         with:
           name: windows

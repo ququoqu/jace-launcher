@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.2
+- **Windows setup no longer closes after you add a Microsoft account.** Closing the sign-in window made Windows think the last window had closed, so setup quit as if cancelled. Setup now only ends through its own buttons.
+- `crash.log` also records how setup ended and why the app quit.
+
 ## 1.4.1
 - **Windows:** fixed a crash after signing in with Microsoft, including in the setup wizard. The sign-in window now closes its built-in browser safely.
 - **Crash log:** if something goes wrong, Jace Launcher shows the error and saves the details to `crash.log` in its data folder (`%APPDATA%\.jacelauncher` on Windows), instead of just closing.

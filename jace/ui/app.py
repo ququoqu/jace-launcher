@@ -485,6 +485,64 @@ def self_test(app) -> int:
     return code
 
 
+def self_test_login(app) -> int:
+    """CI: run the setup wizard's "Add Microsoft account" exactly like a user would, with
+    the Microsoft page sent straight to its success redirect and the token exchange
+    faked. Setup must still be open afterwards (it used to close right after sign-in)."""
+    import os
+    import time as _time
+
+    from PySide6.QtCore import QUrl
+    from jace import accounts as acc_mod
+    from jace.ui import accounts_page
+    from jace.ui.installer import SetupWizard
+
+    acc_mod.complete_microsoft_login = lambda code: {
+        "type": "msa", "username": "SelfTest", "uuid": "0" * 31 + "1", "access_token": "x",
+        "refresh_token": "", "expires_at": _time.time() + 3600, "xuid": ""}
+    real_init = accounts_page.MicrosoftLoginDialog.__init__
+
+    def fake_init(dlg, parent=None):
+        real_init(dlg, parent)
+        # pretend the user signed in: jump to the redirect Microsoft would send
+        QTimer.singleShot(4000, lambda: dlg.view.setUrl(QUrl(dlg.redirect + "?code=self-test")))
+    accounts_page.MicrosoftLoginDialog.__init__ = fake_init
+
+    results = []
+    wiz = SetupWizard()
+    state = {"done": False}
+
+    def start():
+        wiz.next()                               # Welcome -> Add your accounts
+        results.append(f"page: {wiz.currentPage().title()}")
+        wiz.accounts_page.page.add_microsoft()   # blocks in the sign-in dialog until it closes
+        results.append("sign-in dialog closed")
+
+    def finish():
+        state["done"] = True
+        names = [a["username"] for a in accounts.accounts]
+        results.append(f"accounts: {names}")
+        results.append("SETUP STILL OPEN" if wiz.isVisible() else "SETUP CLOSED")
+        wiz.done(QDialog.DialogCode.Accepted)
+
+    QTimer.singleShot(500, start)
+    QTimer.singleShot(20000, finish)
+    fixed = not os.environ.get("JACE_TEST_WITHOUT_FIX")
+    app.setQuitOnLastWindowClosed(not fixed)     # the fix in main(); without it = the old behaviour
+    results.append("with the fix" if fixed else "WITHOUT the fix")
+    wiz.exec()
+    if not state["done"]:
+        results.append("SETUP CLOSED EARLY")
+    ok = state["done"] and "SETUP STILL OPEN" in results and any("SelfTest" in r for r in results)
+    results.append("LOGIN-TEST OK" if ok else "LOGIN-TEST FAILED")
+    out = os.environ.get("JACE_SELF_TEST_OUT")
+    if out:
+        with open(out, "w") as f:
+            f.write("\n".join(results))
+    print("\n".join(results))
+    return 0 if ok else 1
+
+
 def start_installed(installed):
     """Start the freshly installed copy and remove the downloaded one."""
     if desktop.mac_app_bundle():
@@ -606,8 +664,12 @@ def main():
     app.setStyleSheet(STYLE)
     app.setWindowIcon(QIcon(str(desktop.ICON_SRC)))
     argv = sys.argv[1:]
+    from jace import crashlog
+    crashlog.watch_quit(app)
     if "--self-test" in argv:
         sys.exit(self_test(app))
+    if "--self-test-login" in argv:
+        sys.exit(self_test_login(app))
     if "--uninstall-gui" in argv:
         confirm_uninstall()
         return
@@ -616,7 +678,14 @@ def main():
         return
     if should_run_setup(argv):
         wiz = SetupWizard()
-        if wiz.exec() != QDialog.DialogCode.Accepted:
+        # Closing a dialog inside setup (the Microsoft sign-in window) must never quit the app:
+        # with "quit when the last window closes" on, Windows could end setup right after
+        # signing in. Setup ends only through its own buttons.
+        app.setQuitOnLastWindowClosed(False)
+        result = wiz.exec()
+        app.setQuitOnLastWindowClosed(True)
+        crashlog.note(f"setup finished: {'installed' if result == QDialog.DialogCode.Accepted else 'cancelled'}")
+        if result != QDialog.DialogCode.Accepted:
             return                       # setup cancelled: nothing runs uninstalled
         settings.set("welcomed", True)
         installed = desktop.installed_path()

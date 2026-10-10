@@ -48,3 +48,23 @@ def _hook(exc_type, exc, tb, thread=None):
                                      f"{exc_type.__name__}: {exc}\n\nDetails were saved to:\n{LOG}")
         except Exception:  # noqa: BLE001
             pass
+
+
+def note(text: str):
+    """Add a line to the log (e.g. how setup ended)."""
+    try:
+        if _file:
+            _file.write(f"--- {time.strftime('%H:%M:%S')} {text}\n")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def watch_quit(app):
+    """Log why the app quits, with the Python stack that asked for it."""
+    def last_window():
+        note("last window closed")
+
+    def about_to_quit():
+        note("quitting\n" + "".join(traceback.format_stack(limit=12)))
+    app.lastWindowClosed.connect(last_window)
+    app.aboutToQuit.connect(about_to_quit)
